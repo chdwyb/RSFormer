@@ -154,7 +154,7 @@ class Upsample(nn.Module):
         return x
 
 
-class RSFormer(nn.Module):
+class SASCFormer(nn.Module):
     def __init__(self,
                  in_channels=3,
                  dim=48,
@@ -165,7 +165,7 @@ class RSFormer(nn.Module):
                  bias=False,
                  ):
 
-        super(RSFormer, self).__init__()
+        super(SASCFormer, self).__init__()
 
         self.patch_embed = PatchEmbed(in_channels, dim)
         self.encoder1 = nn.Sequential(*[
@@ -235,7 +235,7 @@ class RSFormer(nn.Module):
 
 if __name__ == '__main__':
     x = torch.randn((1, 3, 256, 256)).cuda()
-    net = RSFormer().cuda()
+    net = SASCFormer().cuda()
 
     from thop import profile, clever_format
     flops, params = profile(net, (x,))

@@ -1,53 +1,40 @@
-import sys
-import time
-import torch
-import torch.nn as nn
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-from torchvision.utils import save_image
-from RSFormer import RSFormer
+import argparse
 from datasets import *
-from config import Options
 from utils import pad, unpad
+from model import SASCFormer
+from torchvision.utils import save_image
+
+
+def test_single_image(args):
+    # model
+    model_restoration = SASCFormer().cuda() if args.cuda else SASCFormer()
+    # input image
+    image_input = Image.open(args.image_path).convert('RGB')
+    image_input = ttf.to_tensor(image_input).unsqueeze(0)
+    # testing
+    with torch.no_grad():
+        torch.cuda.empty_cache()
+
+        image_input = image_input.cuda() if args.cuda else image_input
+
+        image_input, pad_size = pad(image_input, factor=args.pad_factor)  # pad
+        restored = model_restoration(image_input)
+        restored = unpad(restored, pad_size)  # unpad
+
+        if args.result_save:
+            save_image(restored, args.result_path)
 
 
 if __name__ == '__main__':
 
-    opt = Options()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image_path', type=str, default='./RSCityscapes/test/input/0001.png')
+    parser.add_argument('--result_path', type=str, default='./RSCityscapes/test/result/0001.png')
+    parser.add_argument('--resume_state', type=str, default='./models/RSCityscapes.pth')
+    parser.add_argument('--pad_factor', type=int, default=16, help='expand input to a multiplier pf pad_factor')
+    parser.add_argument('--result_save', type=bool, default=True, help='to save the result')
+    parser.add_argument('--cuda', type=bool, default=True)
+    parser.add_argument('--num_works', type=int, default=4)
+    args = parser.parse_args()
 
-    inputPathTest = opt.Input_Path_Test
-    resultPathTest = opt.Result_Path_Test
-    modelPath = opt.MODEL_PATH
-
-    myNet = RSFormer()
-    myNet = nn.DataParallel(myNet)
-    if opt.CUDA_USE:
-        myNet = myNet.cuda()
-
-    datasetTest = MyTestDataSet(inputPathTest)
-    testLoader = DataLoader(dataset=datasetTest, batch_size=1, shuffle=False, drop_last=False,
-                            num_workers=opt.Num_Works, pin_memory=True)
-
-    print('--------------------------------------------------------------')
-    # pretrained model
-    if opt.CUDA_USE:
-        myNet.load_state_dict(torch.load(modelPath))
-    else:
-        myNet.load_state_dict(torch.load(modelPath, map_location=torch.device('cpu')))
-    myNet.eval()
-
-    with torch.no_grad():
-        timeStart = time.time()
-        for index, (x, name) in enumerate(tqdm(testLoader, desc='Testing !!! ', file=sys.stdout), 0):
-            torch.cuda.empty_cache()
-
-            input_test = x.cuda() if opt.CUDA_USE else x
-
-            input_test, pad_size = pad(input_test, factor=16)
-            output_test = myNet(input_test)
-            output_test = unpad(output_test, pad_size)
-
-            save_image(output_test, resultPathTest + name[0])
-        timeEnd = time.time()
-        print('---------------------------------------------------------')
-        print("Testing Process Finished !!! Time: {:.4f} s".format(timeEnd - timeStart))
+    test_single_image(args)

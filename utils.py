@@ -1,4 +1,22 @@
+import torch
+import random
 import torch.nn.functional as F
+
+
+# calculate psnr
+def torchPSNR(tar_img, prd_img):
+    imdff = torch.clamp(prd_img,0,1) - torch.clamp(tar_img,0,1)
+    rmse = (imdff**2).mean().sqrt()
+    ps = 20*torch.log10(1/rmse)
+    return ps
+
+
+# set seeds
+def setseed(seed):
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.manual_seed(seed)
 
 
 # pad
